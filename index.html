@@ -1,1 +1,71 @@
-<script src="js/timer.js"></script>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <title>Shared Timer</title>
+
+  <link rel="stylesheet" href="css/timer.css" />
+</head>
+
+<body>
+  <main class="timer">
+    <h1 class="timer__title">Shared Timer</h1>
+
+    <div class="room">
+      Room:
+      <span id="roomCode"></span>
+    </div>
+
+    <section class="timer__settings">
+      <div class="setting">
+        <label for="minSeconds">Timer</label>
+
+        <input
+          id="minSeconds"
+          class="setting__input"
+          type="number"
+          value="10"
+          min="1"
+        />
+
+        <span>to</span>
+
+        <input
+          id="maxSeconds"
+          class="setting__input"
+          type="number"
+          value="30"
+          min="1"
+        />
+
+        <span>seconds</span>
+      </div>
+
+      <div class="setting">
+        <label for="finalCountdown"> Final countdown </label>
+
+        <input
+          id="finalCountdown"
+          class="setting__input"
+          type="number"
+          value="5"
+          min="1"
+        />
+
+        <span>seconds</span>
+      </div>
+    </section>
+
+    <section class="timer__display">
+      <div id="display" class="timer__countdown" aria-live="assertive"></div>
+    </section>
+
+    <section class="timer__controls">
+      <button id="startButton" class="button button--start">START</button>
+      <button id="cancelButton" class="button button--cancel">CANCEL</button>
+      <button id="resetButton" class="button button--reset">RESET</button>
+    </section>
+  </main>
+
+  <script type="module" src="js/timer.js"></script>
+</body>
