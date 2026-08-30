@@ -36,6 +36,7 @@ const tickSound = new Audio("sfx/tick.wav");
 // Some local state that just helps with UI
 // DB state which persists across all instances.
 var globalState = {
+  soundEnabled: false,
   timer: null,
   pageLoading: true,
   dbLoading: false,
@@ -61,31 +62,27 @@ function debugLog(flag, ...args) {
   }
 }
 
+function onPageLoaded() {
+  globalState.pageLoading = false;
+}
+
 function resetToReadyToStart() {
   clearInterval(globalState.timer);
-
-  var dbState = {
-    endTime: null,
-    timerState: "ready",
-    minSeconds: Number(minInput.value),
-    maxSeconds: Number(maxInput.value),
-    finalCountdownSeconds: Number(finalCountdownInput.value),
-  };
   debugLog(
     "resetToReadyToStart",
     "Resetting to ready state with dbState = ",
-    JSON.stringify(dbState),
+    JSON.stringify(newDbState),
   );
   globalState.timer = null;
-  globalState.dbState = dbState;
   globalState.dervivedState.lastDisplayedSecond = null;
   globalState.dervivedState.lastDisplayedQuarterSecond = null;
-  globalState.pageLoading = false;
+
+  var newDbState = structuredClone(globalState.dbState);
+  newDbState.endTime = null;
+  newDbState.timerState = "ready";
 
   // Save to database.
-  maybeSaveRoom();
-
-  updateUI();
+  maybeSaveRoom(newDbState);
 }
 
 function preloadSounds() {
@@ -139,13 +136,13 @@ function updateDisplayFromGlobalState() {
 
   if (globalState.pageLoading) {
     debugLog("updateDisplayFromGlobalState", "loading page");
-    display.textContent = "Load page...";
+    display.textContent = "Load";
     return;
   }
 
   if (globalState.dbLoading) {
     debugLog("updateDisplayFromGlobalState", "loading db");
-    display.textContent = "Load db...";
+    display.textContent = "Load";
     return;
   }
 
@@ -209,6 +206,10 @@ function updateDerivedState() {
     }
     if (seconds != globalState.dervivedState.lastDisplayedSecond) {
       globalState.dervivedState.lastDisplayedSecond = seconds;
+      debugLog(
+        "updateDerivedState",
+        "Updated lastDisplayedSecond to " + seconds,
+      );
     }
   } else if (seconds != globalState.dervivedState.lastDisplayedSecond) {
     globalState.dervivedState.lastDisplayedSecond = seconds;
@@ -265,14 +266,15 @@ function initGlobalStateForNewTimer() {
   const max = Number(maxInput.value);
   const duration = Math.floor(Math.random() * (max - min + 1)) + min;
 
-  globalState.dbState.endTime = Date.now() + duration * 1000;
-  globalState.dbState.timerState = "running";
+  var newDbState = structuredClone(globalState.dbState);
+  newDbState.endTime = Date.now() + duration * 1000;
+  newDbState.timerState = "running";
 
   globalState.dervivedState.lastDisplayedSecond = null;
   globalState.dervivedState.lastDisplayedQuarterSecond = null;
   clearInterval(globalState.timer);
 
-  maybeSaveRoom();
+  maybeSaveRoom(newDbState);
 }
 
 function maybeStartLocalInterval() {
@@ -308,7 +310,14 @@ function onCancelClick() {
 }
 
 function addEventListeners() {
-  document.addEventListener("DOMContentLoaded", resetToReadyToStart);
+  document.addEventListener("DOMContentLoaded", onPageLoaded);
+  document.addEventListener(
+    "click",
+    () => {
+      globalState.soundEnabled = true;
+    },
+    { once: true },
+  );
 
   minInput.addEventListener("change", applyInputs);
   maxInput.addEventListener("change", applyInputs);
@@ -320,6 +329,9 @@ function addEventListeners() {
 }
 
 function play(sound) {
+  if (!globalState.soundEnabled) {
+    return;
+  }
   sound.currentTime = 0;
   sound.play();
 }
@@ -336,34 +348,49 @@ async function createRoom(roomRef) {
   await set(roomRef, globalState.dbState);
 }
 
-async function saveRoom(roomRef) {
-  debugLog("saveRoom", "roomRef = " + JSON.stringify(roomRef));
+async function saveRoom(roomRef, newDbState) {
   debugLog("saveRoom", "roomCode = ", roomCode);
-  debugLog(
-    "saveRoom",
-    "globalState.dbState = " + JSON.stringify(globalState.dbState),
-  );
+  console.trace();
+  debugLog("saveRoom", "newDbState = " + JSON.stringify(newDbState));
 
   console.assert(roomRef, "roomRef must be defined");
-  set(roomRef, globalState.dbState);
+  set(roomRef, newDbState);
   debugLog("saveRoom", "room saved");
 }
 
-function maybeSaveRoom() {
-  if (!roomCode) {
-    debugLog("maybeSaveRoom", "No room code, not saving room");
-    return;
-  }
+function applyDbState(newDbState) {
+  // New source of truth.
+  // 1. Local storage.
+  globalState.dbState = newDbState;
+  globalState.dbLoading = false;
 
-  const roomRef = ref(database, `rooms/${roomCode}`);
-  saveRoom(roomRef);
+  // 2. Derivatives.
+  updateDerivedState();
+  // 3. Deal with local downstream effects: ui, sound, timers, etc.
+  maybeStartLocalInterval();
+  applyDbStateToInputs();
+  updateUI();
+}
+
+function maybeSaveRoom(newDbState) {
+  if (!roomCode) {
+    // Write it into our global state immediately: no db involved.
+    debugLog("maybeSaveRoom", "No room code, not saving room");
+    // Slap in the new state local.
+    applyDbState(newDbState);
+  } else {
+    // Write it into the db: let our db-listening propagate into globalState.
+    const roomRef = ref(database, `rooms/${roomCode}`);
+    saveRoom(roomRef, newDbState);
+  }
 }
 
 function applyInputs() {
-  globalState.dbState.minSeconds = Number(minInput.value);
-  globalState.dbState.maxSeconds = Number(maxInput.value);
-  globalState.dbState.finalCountdownSeconds = Number(finalCountdownInput.value);
-  maybeSaveRoom();
+  var newDbState = structuredClone(globalState.dbState);
+  newDbState.minSeconds = Number(minInput.value);
+  newDbState.maxSeconds = Number(maxInput.value);
+  newDbState.finalCountdownSeconds = Number(finalCountdownInput.value);
+  maybeSaveRoom(newDbState);
 }
 
 function onDbRoomUpdated(snapshot) {
@@ -372,12 +399,8 @@ function onDbRoomUpdated(snapshot) {
   }
 
   const dbState = snapshot.val();
-  globalState.dbState = dbState;
-  updateDerivedState();
 
-  maybeStartLocalInterval();
-  applyDbStateToInputs();
-  updateUI();
+  applyDbState(dbState);
 }
 
 async function initialLoadRoom() {
@@ -385,32 +408,35 @@ async function initialLoadRoom() {
     return;
   }
 
-  globalState.dbLoading = true;
   // Room code: find or create the room.
   const roomRef = ref(database, `rooms/${roomCode}`);
-  const snapshot = await get(roomRef);
-
-  if (snapshot.exists()) {
-    globalState.dbState = snapshot.val();
-    updateDerivedState();
-
-    maybeStartLocalInterval();
-    applyDbStateToInputs();
-  } else {
-    globalState.dbState.minSeconds = Number(minInput.value);
-    globalState.dbState.maxSeconds = Number(maxInput.value);
-    globalState.dbState.finalCountdownSeconds = Number(
-      finalCountdownInput.value,
-    );
-
-    await saveRoom(roomRef);
-  }
-  globalState.dbLoading = false;
 
   // Listen for db updates on the room.
   onValue(roomRef, onDbRoomUpdated);
 
+  globalState.dbLoading = true;
   updateUI();
+
+  debugLog("initialLoadRoom", "roomCode = ", JSON.stringify(roomCode));
+  const snapshot = await get(roomRef);
+
+  if (snapshot.exists()) {
+    debugLog(
+      "initialLoadRoom",
+      "snapshot.val() = ",
+      JSON.stringify(snapshot.val()),
+    );
+    applyDbState(snapshot.val());
+  } else {
+    var newDbState = {};
+    newDbState.minSeconds = Number(minInput.value);
+    newDbState.maxSeconds = Number(maxInput.value);
+    newDbState.finalCountdownSeconds = Number(finalCountdownInput.value);
+    newDbState.timerState = "ready";
+    newDbState.endTime = null;
+
+    await saveRoom(roomRef, newDbState);
+  }
 }
 
 preloadSounds();

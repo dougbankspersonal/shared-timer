@@ -60,7 +60,7 @@ body {
 }
 
 .timer__countdown {
-  font-size: 12rem;
+  font-size: 7rem;
   font-weight: 700;
   line-height: 1;
 }
@@ -90,6 +90,11 @@ body {
   color: #222;
 }
 
+.button--reset {
+  background: #bbb;
+  color: #222;
+}
+
 @media (max-width: 500px) {
   .timer {
     padding-top: 25px;
@@ -101,7 +106,7 @@ body {
     height: 250px;
   }
   .timer__countdown {
-    font-size: 9rem;
+    font-size: 4rem;
   }
   .setting {
     font-size: 1rem;
