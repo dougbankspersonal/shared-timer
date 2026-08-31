@@ -27,9 +27,9 @@ console.log("debugLogFlagsTable = ", JSON.stringify(debugLogFlagsTable));
 
 roomCodeElement.textContent = roomCode || "none";
 
-const dingSound = new Audio("sfx/ding.mp3");
+const startSound = new Audio("sfx/hoot.mp3");
 const beepSound = new Audio("sfx/beep.mp3");
-const tadaSound = new Audio("sfx/tada.mp3");
+const allDownSoung = new Audio("sfx/shriek.mp3");
 const tickSound = new Audio("sfx/tick.wav");
 
 // Has a "timer", which is a js interval,
@@ -86,9 +86,9 @@ function resetToReadyToStart() {
 }
 
 function preloadSounds() {
-  dingSound.preload = "auto";
+  startSound.preload = "auto";
   beepSound.preload = "auto";
-  tadaSound.preload = "auto";
+  allDownSoung.preload = "auto";
   tickSound.preload = "auto";
 }
 
@@ -236,7 +236,7 @@ function onTimerInterval() {
     oldDbState.timerState !== "running" &&
     globalState.dbState.timerState === "running"
   ) {
-    play(dingSound);
+    play(startSound);
   }
   // New displayed second: play tick oe beep sound.
   if (
@@ -254,7 +254,7 @@ function onTimerInterval() {
     oldDbState.timerState !== "done" &&
     globalState.dbState.timerState === "done"
   ) {
-    play(tadaSound);
+    play(allDownSoung);
   }
 
   // No harm in just updating the whole UI: we could be smarter b ut whatever.
@@ -294,7 +294,7 @@ function maybeStartLocalInterval() {
 }
 
 function onStartClick() {
-  play(dingSound);
+  play(startSound);
 
   initGlobalStateForNewTimer();
 
