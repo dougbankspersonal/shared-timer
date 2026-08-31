@@ -53,6 +53,8 @@ var globalState = {
   },
 };
 
+debugLog("global", "globalState.pageLoading = ", globalState.pageLoading);
+
 const spinChars = ["/", "|", "\\", "―"];
 
 // Functions
@@ -63,7 +65,19 @@ function debugLog(flag, ...args) {
 }
 
 function onPageLoaded() {
+  debugLog(
+    "onPageLoaded",
+    "globalState.pageLoading = ",
+    globalState.pageLoading,
+  );
+
   globalState.pageLoading = false;
+  debugLog(
+    "onPageLoaded",
+    "globalState.pageLoading = ",
+    globalState.pageLoading,
+  );
+  updateUI();
 }
 
 function resetToReadyToStart() {
@@ -99,6 +113,8 @@ function updateButtons() {
     resetButton.style.display = "none";
     return;
   }
+
+  debugLog("updateButtons", "globalState = ", JSON.stringify(globalState));
 
   if (globalState.dbState.timerState == "ready") {
     startButton.style.display = "inline-block";
@@ -136,13 +152,13 @@ function updateDisplayFromGlobalState() {
 
   if (globalState.pageLoading) {
     debugLog("updateDisplayFromGlobalState", "loading page");
-    display.textContent = "Load";
+    display.textContent = "Load page";
     return;
   }
 
   if (globalState.dbLoading) {
     debugLog("updateDisplayFromGlobalState", "loading db");
-    display.textContent = "Load";
+    display.textContent = "Load database";
     return;
   }
 
@@ -186,6 +202,8 @@ function updateUI() {
 // We are updating state.
 // No UI Shite.
 function updateDerivedState() {
+  debugLog("updateDerivedState", "globalState = ", JSON.stringify(globalState));
+
   // How long until we are done, in msec, sec, and quarter sec.
   const remaining = Math.max(0, globalState.dbState.endTime - Date.now());
   const seconds = Math.ceil(remaining / 1000);
@@ -349,6 +367,11 @@ async function createRoom(roomRef) {
 }
 
 async function saveRoom(roomRef, newDbState) {
+  // If no room code, just slap in place locally.
+  if (roomRef == null) {
+    applyDbState(newDbState);
+    return;
+  }
   debugLog("saveRoom", "roomCode = ", roomCode);
   console.trace();
   debugLog("saveRoom", "newDbState = " + JSON.stringify(newDbState));
@@ -405,6 +428,13 @@ function onDbRoomUpdated(snapshot) {
 
 async function initialLoadRoom() {
   if (!roomCode) {
+    var newDbState = {};
+    newDbState.minSeconds = Number(minInput.value);
+    newDbState.maxSeconds = Number(maxInput.value);
+    newDbState.finalCountdownSeconds = Number(finalCountdownInput.value);
+    newDbState.timerState = "ready";
+    newDbState.endTime = null;
+    await maybeSaveRoom(newDbState);
     return;
   }
 
@@ -435,7 +465,7 @@ async function initialLoadRoom() {
     newDbState.timerState = "ready";
     newDbState.endTime = null;
 
-    await saveRoom(roomRef, newDbState);
+    await maybeSaveRoom(newDbState);
   }
 }
 
