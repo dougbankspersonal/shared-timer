@@ -204,6 +204,14 @@ function updateUI() {
 function updateDerivedState() {
   debugLog("updateDerivedState", "globalState = ", JSON.stringify(globalState));
 
+  // If there is no end time, we are ready.
+  if (globalState.dbState.endTime === null) {
+    globalState.dbState.timerState = "ready";
+    clearInterval(globalState.timer);
+    globalState.timer = null;
+    return;
+  }
+
   // How long until we are done, in msec, sec, and quarter sec.
   const remaining = Math.max(0, globalState.dbState.endTime - Date.now());
   const seconds = Math.ceil(remaining / 1000);
@@ -216,7 +224,11 @@ function updateDerivedState() {
     debugLog("updateDerivedState", "Timer done, clearing interval");
     clearInterval(globalState.timer);
     globalState.timer = null;
-  } else if (seconds > globalState.dbState.finalCountdownSeconds) {
+    return;
+  }
+
+  // Timer is not yet in final countdown.
+  if (seconds > globalState.dbState.finalCountdownSeconds) {
     if (
       quarterSeconds !== globalState.dervivedState.lastDisplayedQuarterSecond
     ) {
@@ -229,7 +241,11 @@ function updateDerivedState() {
         "Updated lastDisplayedSecond to " + seconds,
       );
     }
-  } else if (seconds != globalState.dervivedState.lastDisplayedSecond) {
+    return;
+  }
+
+  // Timer is in final countdown.
+  if (seconds != globalState.dervivedState.lastDisplayedSecond) {
     globalState.dervivedState.lastDisplayedSecond = seconds;
   }
 }
