@@ -4,10 +4,9 @@ import {
   get,
   set,
   onValue,
-  serverTimestamp,
 } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-database.js";
 
-var gServerTimeOffset = 0;
+var gServerTimeOffset = null;
 const roomCodeElement = document.getElementById("roomCode");
 const display = document.getElementById("display");
 const minInput = document.getElementById("minSeconds");
@@ -461,8 +460,18 @@ async function initialLoadRoom() {
   }
 
   const offsetRef = ref(database, ".info/serverTimeOffset");
-  const offsetSnapshot = await get(offsetRef);
-  gServerTimeOffset = offsetSnapshot.val();
+
+  console.assert(
+    gServerTimeOffset === null,
+    "Expected gServerTimeOffset to be null",
+  );
+  onValue(
+    offsetRef,
+    (snapshot) => {
+      gServerTimeOffset = snapshot.val();
+    },
+    { onlyOnce: true },
+  );
 
   // Room code: find or create the room.
   const roomRef = ref(database, `rooms/${roomCode}`);
