@@ -4,8 +4,10 @@ import {
   get,
   set,
   onValue,
+  serverTimestamp,
 } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-database.js";
 
+var gServerTimeOffset = 0;
 const roomCodeElement = document.getElementById("roomCode");
 const display = document.getElementById("display");
 const minInput = document.getElementById("minSeconds");
@@ -131,13 +133,17 @@ function updateButtons() {
   }
 }
 
+function getServerTime() {
+  return Date.now() + gServerTimeOffset;
+}
+
 function isInFinalCountdown() {
   // If not running, no.
   if (globalState.dbState.timerState != "running") {
     return false;
   }
   // Do all the math: end time vs current time and finalCountdownSecond.
-  const remaining = Math.max(0, globalState.dbState.endTime - Date.now());
+  const remaining = Math.max(0, globalState.dbState.endTime - getServerTime());
   const seconds = remaining / 1000;
   return seconds <= globalState.dbState.finalCountdownSeconds;
 }
@@ -213,7 +219,7 @@ function updateDerivedState() {
   }
 
   // How long until we are done, in msec, sec, and quarter sec.
-  const remaining = Math.max(0, globalState.dbState.endTime - Date.now());
+  const remaining = Math.max(0, globalState.dbState.endTime - getServerTime());
   const seconds = Math.ceil(remaining / 1000);
   const quarterSeconds = Math.ceil(remaining / 250);
 
@@ -301,7 +307,7 @@ function initGlobalStateForNewTimer() {
   const duration = Math.floor(Math.random() * (max - min + 1)) + min;
 
   var newDbState = structuredClone(globalState.dbState);
-  newDbState.endTime = Date.now() + duration * 1000;
+  newDbState.endTime = getServerTime() + duration * 1000;
   newDbState.timerState = "running";
 
   globalState.dervivedState.lastDisplayedSecond = null;
@@ -453,6 +459,10 @@ async function initialLoadRoom() {
     await maybeSaveRoom(newDbState);
     return;
   }
+
+  const offsetRef = ref(database, ".info/serverTimeOffset");
+  const offsetSnapshot = await get(offsetRef);
+  gServerTimeOffset = offsetSnapshot.val();
 
   // Room code: find or create the room.
   const roomRef = ref(database, `rooms/${roomCode}`);
