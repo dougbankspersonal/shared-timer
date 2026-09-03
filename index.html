@@ -11,8 +11,17 @@
   <main class="timer">
     <h1 class="timer__title">Shared Timer</h1>
 
+    <div class="join-room">
+      <input
+        id="roomNumber"
+        type="text"
+        inputmode="numeric"
+        placeholder="Room number"
+      />
+      <button id="joinRoomButton">Join Room</button>
+    </div>
     <div class="room">
-      Room:
+      Current Room:
       <span id="roomCode"></span>
     </div>
 
@@ -57,7 +66,7 @@
     </section>
 
     <section class="timer__display">
-      <div id="display" class="timer__countdown" aria-live="assertive"></div>
+      <div id="statusText" class="timer__countdown" aria-live="assertive"></div>
     </section>
 
     <section class="timer__controls">
