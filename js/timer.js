@@ -31,6 +31,7 @@ function preloadSounds() {
 }
 
 function playSound(sound) {
+  console.trace("playSound", "sound = ", sound.src);
   setTimeout(() => {
     // Queue this up in a little bit, there can be race conditions.
     const globalState = stateManagement.globalState;
@@ -190,11 +191,24 @@ function playSounds(oldGlobalState) {
   // Sounds for timer ticks.
   // New displayed second: play tick oe beep sound.
   if (
+    oldDerivedState.lastDisplayedSecond &&
+    newDerivedState.lastDisplayedSecond &&
+    newDbState.timerState == "running" &&
     oldDerivedState.lastDisplayedSecond !== newDerivedState.lastDisplayedSecond
   ) {
     if (isInFinalCountdown()) {
       playSound(beepSound);
     } else {
+      debugLog(
+        "playSounds",
+        "oldDerivedState.lastDisplayedSecond = ",
+        oldDerivedState.lastDisplayedSecond,
+      );
+      debugLog(
+        "playSounds",
+        "newDerivedState.lastDisplayedSecond = ",
+        newDerivedState.lastDisplayedSecond,
+      );
       playSound(tickSound);
     }
   }
